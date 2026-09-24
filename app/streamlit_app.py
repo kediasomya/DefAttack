@@ -55,7 +55,7 @@ def dataset():
 @st.cache_data(ttl=60)
 def graph_status():
     """Live TigerGraph (Savanna) + MCP status for the sidebar."""
-    out = {"tg": False, "mcp": False}
+    out = {"tg": False, "mcp": False, "vertices": {}}
     try:
         from clara import tg
         g = tg.get()
@@ -63,10 +63,18 @@ def graph_status():
             c = g.conn
             out.update(tg=True, host=c.host.replace("https://", "").split(".")[0], graph=c.graphname)
             vt = ["Transaction", "Card", "Customer", "DeviceProfile", "ClosedCase", "InvestigationCase", "PolicyDoc"]
-            out["vertices"] = {v: c.getVertexCount(v) for v in vt}
-            out["edges"] = c.getEdgeCount("*") if hasattr(c, "getEdgeCount") else None
-            inv = c.getVertices("InvestigationCase", limit=100) or []
-            out["cases"] = sorted(v["v_id"] for v in inv)
+            # probe per type: a vertex missing from this graph must not cost us the whole sidebar
+            for v in vt:
+                try:
+                    out["vertices"][v] = c.getVertexCount(v)
+                except Exception as e:
+                    out.setdefault("why", f"{v}: {str(e)[:100]}")
+            try:
+                out["edges"] = c.getEdgeCount("*") if hasattr(c, "getEdgeCount") else None
+                inv = c.getVertices("InvestigationCase", limit=100) or []
+                out["cases"] = sorted(v["v_id"] for v in inv)
+            except Exception:
+                pass
         else:
             out["why"] = tg.failure_reason()
     except Exception as e:
@@ -106,16 +114,19 @@ with st.sidebar:
     st.divider()
     st.subheader("TigerGraph")
     gs = graph_status()
-    if gs["tg"]:
+    v = gs["vertices"]
+    if gs["tg"] and v:
         st.success(f"Connected · Savanna `{gs['host'][:14]}…` · graph **{gs['graph']}**")
-        v = gs["vertices"]
         a, b = st.columns(2)
-        a.metric("Transactions", f"{v['Transaction']:,}")
-        b.metric("Closed cases", f"{v['ClosedCase']:,}")
-        a.metric("Device profiles", f"{v['DeviceProfile']:,}")
-        b.metric("Cases written", v["InvestigationCase"])
+        a.metric("Transactions", f"{v.get('Transaction', 0):,}")
+        b.metric("Closed cases", f"{v.get('ClosedCase', 0):,}")
+        a.metric("Device profiles", f"{v.get('DeviceProfile', 0):,}")
+        b.metric("Cases written", v.get("InvestigationCase", 0))
         if isinstance(gs.get("edges"), dict):
-            st.caption(f"{sum(gs['edges'].values()):,} edges · {v['PolicyDoc']} policy docs (GraphRAG)")
+            st.caption(f"{sum(gs['edges'].values()):,} edges · {v.get('PolicyDoc', 0)} policy docs (GraphRAG)")
+    elif gs["tg"]:
+        st.warning(f"Reached the instance but graph **{gs['graph']}** returned no counts — "
+                   f"running on the offline pandas graph. {gs.get('why') or ''}")
     else:
         st.warning(f"Not connected — running on the offline pandas graph. {gs.get('why') or ''}")
     st.caption(("🟢 TigerGraph MCP server: " + f"{gs.get('mcp_tools', 0)} tools") if gs["mcp"]

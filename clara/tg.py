@@ -59,15 +59,24 @@ def _cfg() -> Optional[dict]:
     )
 
 
-def _ping(cfg: dict) -> bool:
-    """Cheap reachability probe with a hard timeout (pyTigerGraph has none)."""
+def _unreachable_reason(cfg: dict) -> Optional[str]:
+    """Cheap reachability probe with a hard timeout (pyTigerGraph has none).
+    None when the instance answers, otherwise why it does not."""
     import requests
     url = f"{cfg['host']}:{cfg['gsPort']}/api/ping"
     try:
-        requests.get(url, timeout=PING_TIMEOUT)   # any HTTP answer (even 401) = reachable
-        return True
+        r = requests.get(url, timeout=PING_TIMEOUT)   # any HTTP answer (even 401) = reachable
     except Exception:
-        return False
+        return f"TigerGraph unreachable at {cfg['host']}:{cfg['gsPort']}"
+    # a stopped Savanna workspace still answers, but every endpoint - ping, REST++ and GSQL -
+    # returns this 500, so connecting would only fail later on the first real query
+    if r.status_code >= 500 and "auto start is not enabled" in r.text.lower():
+        return "Savanna workspace is stopped — start it (or enable auto-start) in the Savanna console"
+    return None
+
+
+def _ping(cfg: dict) -> bool:
+    return _unreachable_reason(cfg) is None
 
 
 def connect(cfg: Optional[dict] = None, need_token: bool = True):
@@ -76,8 +85,9 @@ def connect(cfg: Optional[dict] = None, need_token: bool = True):
     cfg = cfg or _cfg()
     if cfg is None:
         raise RuntimeError("TG_HOST not set")
-    if not _ping(cfg):
-        raise RuntimeError(f"TigerGraph unreachable at {cfg['host']}:{cfg['gsPort']}")
+    why = _unreachable_reason(cfg)
+    if why:
+        raise RuntimeError(why)
     conn = ptg.TigerGraphConnection(**cfg)
     if need_token:
         try:
