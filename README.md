@@ -35,6 +35,18 @@ Optional LLM for the case summary and SAR prose: `CLARA_LLM_PROVIDER=gemini` + `
 
 ---
 
+## Deploying the console
+
+The console is a Streamlit app, so it needs a host that runs a long-lived process — [Streamlit Community Cloud](https://share.streamlit.io) is the path of least resistance. Serverless platforms such as Vercel cannot host it.
+
+1. Push this repo to GitHub. The slim cache the app reads (`dataset/_slim.parquet`, `closed_cases_history.csv`, `case_pack.csv`, ~17MB) is committed; the raw `transactions.csv` and `identity.csv` stay out of git and are only needed to regenerate the cache with `python data/build_cache.py`.
+2. Create the app with main file `app/streamlit_app.py` and **Python 3.12** — `pyTigerGraph` and `pyTigerGraph-mcp` do not publish wheels for 3.13+.
+3. Paste your keys into *Settings → Secrets* using `.streamlit/secrets.toml.example` as the template. The app mirrors `st.secrets` into the environment, since every module reads its config with `os.getenv`. Do not copy `REQUESTS_CA_BUNDLE` / `SSL_CERT_FILE` from a local `.env`: they point at paths that only exist on your machine.
+
+With no secrets set the app still runs — it falls back to the offline pandas graph and template narration. Cold start is ~5s (the dataset is held in `st.cache_resource`, ~600MB RSS, within the 2.7GB the free tier allows).
+
+---
+
 ## How it works
 
 ```

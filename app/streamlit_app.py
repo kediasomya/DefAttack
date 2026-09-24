@@ -25,6 +25,25 @@ from clara.realdata import load
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(ROOT, ".env"))
+
+
+def _env_from_secrets():
+    """There is no .env on Streamlit Cloud, so mirror st.secrets into os.environ - every
+    clara module reads its config with os.getenv. A local .env wins over a secret."""
+    try:
+        items = dict(st.secrets).items()
+    except Exception:
+        return
+    for k, v in items:
+        if isinstance(v, str) and k not in os.environ:
+            os.environ[k] = v
+    # A CA bundle path from a dev machine makes every requests call raise once deployed.
+    for var in ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
+        if os.environ.get(var) and not os.path.exists(os.environ[var]):
+            del os.environ[var]
+
+
+_env_from_secrets()
 st.set_page_config(page_title="DefAttack — Fraud Investigation Agent", page_icon="🛡️", layout="wide")
 
 

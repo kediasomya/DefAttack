@@ -1,9 +1,14 @@
-# Data files (kept locally, not in git — some exceed GitHub's 100MB limit)
-dataset/
+# Data files. The raw CSVs exceed GitHub's 100MB limit and are kept locally; the slim
+# cache the app actually reads is committed so Streamlit Cloud can build the dataset.
+dataset/*
+!dataset/_slim.parquet
+!dataset/closed_cases_history.csv
+!dataset/case_pack.csv
 .venv/
 __pycache__/
 *.pyc
 .env
+.streamlit/secrets.toml
 .DS_Store
 .idea/
 memory/mcp_server.log

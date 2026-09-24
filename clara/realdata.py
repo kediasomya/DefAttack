@@ -30,6 +30,8 @@ class Dataset:
         if not pd.api.types.is_datetime64_any_dtype(self.tx["ts"]):
             self.tx["ts"] = pd.to_datetime(self.tx["ts"], errors="coerce")
         self.closed = pd.read_csv(os.path.join(ds_dir, "closed_cases_history.csv"))
+        # parse once, vectorised: per-row pd.to_datetime re-guesses the format every call
+        self.closed["opened_at"] = pd.to_datetime(self.closed["opened_at"], errors="coerce")
         self.case_pack = pd.read_csv(os.path.join(ds_dir, "case_pack.csv"))
         self._by_cust = {c: g.sort_values("ts") for c, g in self.tx.groupby("customer_id")}
         # distinct customers per device profile -> identify hub (generic) vs specific profiles
@@ -92,7 +94,7 @@ class Dataset:
                 "connected_card_ids": [c for c in str(r.connected_card_ids).split("|")
                                        if pd.notna(r.connected_card_ids) and c and c != "nan"],
                 "notes": r.analyst_notes if pd.notna(r.analyst_notes) else "",
-                "opened_at": pd.to_datetime(r.opened_at),
+                "opened_at": r.opened_at,
             })
         self._mem_by_pattern = {}
         for m in self.memory:
