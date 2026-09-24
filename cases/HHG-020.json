@@ -1,0 +1,141 @@
+{
+  "case_id": "HHG-020",
+  "case": {
+    "status": "open",
+    "verdict": "uncertain",
+    "fraud_probability": 0.464,
+    "pattern": "card_not_present_new_device",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3509359"
+    ],
+    "first_suspicious_txn_id": "3509359",
+    "connected_card_ids": [],
+    "connected_device_profiles": [],
+    "exposure_usd": 125.08,
+    "evidence": [
+      {
+        "claim": "Bank model risk score 0.52 on the flagged transaction opened the investigation; it is not used as evidence (in closed cases every cleared alert scored above 0.7 versus 24% of confirmed frauds)",
+        "source": "graph",
+        "ref": "Transaction.risk_score",
+        "entity_ids": [
+          "3509359"
+        ]
+      },
+      {
+        "claim": "Flagged transaction is unusual: product code R never used by this customer before",
+        "source": "graph",
+        "ref": "query:customer_history(C12265)",
+        "entity_ids": [
+          "3509359"
+        ]
+      },
+      {
+        "claim": "Flagged transaction came from a device marked New for this account (id_15)",
+        "source": "graph",
+        "ref": "query:identity(3509359)",
+        "entity_ids": [
+          "3509359"
+        ]
+      },
+      {
+        "claim": "Customer has 2 closed case(s) on file: 2 confirmed fraud (account_takeover x2), 0 cleared",
+        "source": "graph",
+        "ref": "query:prior_cases_for_customer(C12265)",
+        "entity_ids": [
+          "CC-2277",
+          "CC-2447"
+        ]
+      },
+      {
+        "claim": "Live graph (via TigerGraph MCP): device profile 'Trident/7.0 | Windows 10 | ie 11.0 for desktop |' carries 1 transaction(s) from 0 other customer(s) within \u00b130 days of the alert",
+        "source": "graph",
+        "ref": "mcp:tigergraph__run_installed_query(device_neighbors)",
+        "entity_ids": []
+      },
+      {
+        "claim": "No reply from the customer within 24 hours",
+        "source": "customer",
+        "ref": "evidence_request:1",
+        "entity_ids": []
+      },
+      {
+        "claim": "Fraud Policy R1: Verify before you block on a weak signal. \u2014 Verify before you block on a weak signal. If the case rests on a single signal (including a risk score alone) and your assessed fraud probability is below 0.70, recommend `VERIFY_WITH_CUSTOMER` or `STEP_UP_AUTH` before a",
+        "source": "document",
+        "ref": "README.md#Fraud Policy R1: Verify before you block on a weak signal.",
+        "entity_ids": []
+      },
+      {
+        "claim": "Fraud Policy 3a. A case is not a report \u2014 Two different things, and the agent produces both. **A case** (`CREATE_CASE`) is the bank's internal record of an investigation. Open one whenever fraud probability reaches 0.30, whenever you request evidence, or wheneve",
+        "source": "document",
+        "ref": "README.md#Fraud Policy 3a. A case is not a report",
+        "entity_ids": []
+      },
+      {
+        "claim": "Fraud Policy R4: No reply within 24 hours. \u2014 No reply within 24 hours. Recommend `MONITOR_CARD` and `DECLINE_TRANSACTION` for pending authorizations. Escalate if exposure exceeds $500.",
+        "source": "document",
+        "ref": "README.md#Fraud Policy R4: No reply within 24 hours.",
+        "entity_ids": []
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-2979",
+      "CC-0883",
+      "CC-2495"
+    ],
+    "summary": "The investigation was triggered by an unusual product code never used before and a new device ID. Step-up authentication was assumed to result in no reply from the customer within 24 hours. The verdict is uncertain with a fraud probability of 0.464 due to missing decisive evidence. Consequently, Fraud Policy R4 actions of monitoring the card and declining pending authorizations were followed because of the lack of a customer reply within 24 hours.",
+    "written_to_graph": true,
+    "graph_case_id": "CASE-HHG-020"
+  },
+  "evidence_requests": [
+    {
+      "type": "step_up_auth",
+      "asked_after_step": 5,
+      "assumed_response": "No reply from the customer within 24 hours (assumed because the graph evidence leans only 2.6x toward fraud \u2014 too weak to predict a denial, too strong to predict a confirmation)"
+    }
+  ],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "STEP_UP_AUTH",
+        "route": "auto",
+        "reason": "R1: assessed probability 0.46 rests on too little evidence to block; verify first"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "3a: a case is opened whenever evidence is requested"
+      }
+    ],
+    "final": [
+      {
+        "action": "MONITOR_CARD",
+        "route": "auto",
+        "reason": "R4: no reply within 24 hours; raise monitoring for 72h"
+      },
+      {
+        "action": "DECLINE_TRANSACTION",
+        "route": "L1",
+        "reason": "R4: decline pending authorizations while unverified"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "3a: case stays open pending the customer's reply"
+      }
+    ],
+    "what_changed": "The assumed step up auth response moved the fraud probability from 0.46 to 0.46, so the recommendation changed from [STEP_UP_AUTH, CREATE_CASE] to [MONITOR_CARD, DECLINE_TRANSACTION, CREATE_CASE]."
+  },
+  "sar": {
+    "file": false,
+    "reason": "3a: no report \u2014 activity is not confirmed or strongly suspected fraud.",
+    "narrative": "",
+    "subjects": [],
+    "total_amount_usd": 0,
+    "activity_dates": []
+  },
+  "stop_reason": "No reply to the step up auth request within 24 hours; probability 46% stays uncertain and further graph steps are unlikely to change it, so the card is monitored and pending authorizations declined under R4 (policy 6).",
+  "tool_calls": 23,
+  "tokens": 1644,
+  "latency_s": 2.507
+}

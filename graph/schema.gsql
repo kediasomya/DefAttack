@@ -1,0 +1,37 @@
+// CLARA fraud-investigation graph (TigerGraph 4.x). Applied by graph/load.py.
+// All edges are UNDIRECTED so every query can traverse in either direction with
+// the V2 pattern  -(EDGE:e)-  without maintaining reverse edges.
+// load.py runs: CREATE GRAPH CLARA()  ->  this job  ->  RUN SCHEMA_CHANGE JOB.
+CREATE SCHEMA_CHANGE JOB clara_schema FOR GRAPH CLARA {
+  ADD VERTEX Customer (PRIMARY_ID id STRING, n_cards INT) WITH primary_id_as_attribute="true";
+  ADD VERTEX Card (PRIMARY_ID id STRING, customer_id STRING, network STRING, card_type STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX Transaction (PRIMARY_ID id STRING, customer_id STRING, card_id STRING, ts DATETIME,
+      amount DOUBLE, product STRING, channel STRING, risk DOUBLE, addr1 STRING, addr2 STRING,
+      p_email STRING, r_email STRING, device_profile STRING, device_type STRING,
+      device_new STRING, proxy_type STRING, m_flags STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX DeviceProfile (PRIMARY_ID id STRING, device_info STRING, os STRING, browser STRING,
+      screen STRING, n_customers INT, is_generic BOOL) WITH primary_id_as_attribute="true";
+  ADD VERTEX EmailDomain (PRIMARY_ID id STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX BillingRegion (PRIMARY_ID id STRING, country STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX ClosedCase (PRIMARY_ID id STRING, customer_id STRING, card_id STRING, opened_at DATETIME,
+      closed_at DATETIME, outcome STRING, pattern STRING, first_fraud_txn STRING, n_txns INT,
+      exposure DOUBLE, actions STRING, report_filed STRING, notes STRING) WITH primary_id_as_attribute="true";
+  ADD VERTEX InvestigationCase (PRIMARY_ID id STRING, case_id STRING, customer_id STRING, card_id STRING,
+      status STRING, verdict STRING, fraud_probability DOUBLE, pattern STRING, exposure DOUBLE,
+      summary STRING, actions STRING, sar_file BOOL, written_at DATETIME) WITH primary_id_as_attribute="true";
+  ADD VERTEX PolicyDoc (PRIMARY_ID id STRING, section STRING, kind STRING, text STRING) WITH primary_id_as_attribute="true";
+
+  ADD UNDIRECTED EDGE OWNS (FROM Customer, TO Card);
+  ADD UNDIRECTED EDGE MADE (FROM Card, TO Transaction);
+  ADD UNDIRECTED EDGE FROM_DEVICE (FROM Transaction, TO DeviceProfile);
+  ADD UNDIRECTED EDGE PURCHASER_EMAIL (FROM Transaction, TO EmailDomain);
+  ADD UNDIRECTED EDGE BILLED_IN (FROM Transaction, TO BillingRegion);
+  ADD DIRECTED EDGE NEXT (FROM Transaction, TO Transaction, gap_s INT);
+  ADD UNDIRECTED EDGE CC_INVOLVES (FROM ClosedCase, TO Transaction);
+  ADD UNDIRECTED EDGE CC_ON_CARD (FROM ClosedCase, TO Card);
+  ADD UNDIRECTED EDGE CC_CONNECTED_TO (FROM ClosedCase, TO Card);
+  ADD UNDIRECTED EDGE CASE_ON_CARD (FROM InvestigationCase, TO Card);
+  ADD UNDIRECTED EDGE CASE_INVOLVES (FROM InvestigationCase, TO Transaction);
+  ADD UNDIRECTED EDGE CASE_DEVICE (FROM InvestigationCase, TO DeviceProfile);
+  ADD UNDIRECTED EDGE CASE_SIMILAR_TO (FROM InvestigationCase, TO ClosedCase);
+}

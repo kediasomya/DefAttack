@@ -1,0 +1,199 @@
+{
+  "case_id": "HHG-011",
+  "case": {
+    "status": "closed_fraud",
+    "verdict": "fraud",
+    "fraud_probability": 0.972,
+    "pattern": "card_not_present_new_device",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3583368"
+    ],
+    "first_suspicious_txn_id": "3583368",
+    "connected_card_ids": [
+      "C03938-K1",
+      "C05595-K1",
+      "C05678-K1"
+    ],
+    "connected_device_profiles": [
+      "SM-G610F Build/NRD90M | ? | chrome 66.0 for android | ?"
+    ],
+    "exposure_usd": 131.3,
+    "evidence": [
+      {
+        "claim": "Cardholder reports they did not make the flagged purchase",
+        "source": "customer",
+        "ref": "trigger:customer_report",
+        "entity_ids": [
+          "3583368"
+        ]
+      },
+      {
+        "claim": "Flagged transaction is unusual: amount $131.30 exceeds the customer's 95th-pct $107.72",
+        "source": "graph",
+        "ref": "query:customer_history(C11923)",
+        "entity_ids": [
+          "3583368"
+        ]
+      },
+      {
+        "claim": "Flagged transaction came from a device marked New for this account (id_15)",
+        "source": "graph",
+        "ref": "query:identity(3583368)",
+        "entity_ids": [
+          "3583368"
+        ]
+      },
+      {
+        "claim": "Specific device profile 'SM-G610F Build/NRD90M | ? | chrome 66.0 for android | ?' used by 3 other customer(s) within 30 days (C03938-K1, C05595-K1, C05678-K1); 50% marked New; this customer used it on 1 transaction(s)",
+        "source": "graph",
+        "ref": "query:device_neighbors(profile, \u00b130d)",
+        "entity_ids": [
+          "C03938-K1",
+          "C05595-K1",
+          "C05678-K1"
+        ]
+      },
+      {
+        "claim": "device neighbours include 2 customer(s) with confirmed fraud history (C05595, C05678)",
+        "source": "graph",
+        "ref": "query:link_to_known_fraud(profile)",
+        "entity_ids": [
+          "C05595",
+          "C05678"
+        ]
+      },
+      {
+        "claim": "Customer has 11 closed case(s) on file: 10 confirmed fraud (card_not_present_new_device x6, card_testing x4), 1 cleared",
+        "source": "graph",
+        "ref": "query:prior_cases_for_customer(C11923)",
+        "entity_ids": [
+          "CC-3905",
+          "CC-4501",
+          "CC-4743"
+        ]
+      },
+      {
+        "claim": "Graph traversal Customer\u2192Card\u2192Transaction\u2192DeviceProfile\u2192Transaction\u2190ClosedCase (via TigerGraph MCP) reaches 1445 confirmed-fraud closed case(s) through 1407 specific device(s)",
+        "source": "graph",
+        "ref": "mcp:tigergraph__run_installed_query(link_to_known_fraud)",
+        "entity_ids": [
+          "CC-0001",
+          "CC-0012",
+          "CC-0014",
+          "CC-0045",
+          "CC-0048",
+          "CC-0052"
+        ]
+      },
+      {
+        "claim": "Live graph (via TigerGraph MCP): device profile 'SM-G610F Build/NRD90M | ? | chrome 66.0 for andr' carries 4 transaction(s) from 3 other customer(s) within \u00b130 days of the alert",
+        "source": "graph",
+        "ref": "mcp:tigergraph__run_installed_query(device_neighbors)",
+        "entity_ids": [
+          "C03938",
+          "C05595",
+          "C05678"
+        ]
+      },
+      {
+        "claim": "Fraud Policy R2: Customer denies the transaction. \u2014 Customer denies the transaction. Recommend `BLOCK_CARD` and `CREATE_CASE`. Add `FILE_REPORT` if exposure exceeds $1,000 or the case connects to a shared device profile or another card's fraud.",
+        "source": "document",
+        "ref": "README.md#Fraud Policy R2: Customer denies the transaction.",
+        "entity_ids": []
+      },
+      {
+        "claim": "Fraud Policy 3a. A case is not a report \u2014 Two different things, and the agent produces both. **A case** (`CREATE_CASE`) is the bank's internal record of an investigation. Open one whenever fraud probability reaches 0.30, whenever you request evidence, or wheneve",
+        "source": "document",
+        "ref": "README.md#Fraud Policy 3a. A case is not a report",
+        "entity_ids": []
+      },
+      {
+        "claim": "Fraud Policy R6: Shared origin. \u2014 Shared origin. When several cards show fraud from the same device profile, the same billing region, or the same recipient email in one window, name the shared element, recommend `CREATE_CASE` and `FILE_REPORT`, and `MONI",
+        "source": "document",
+        "ref": "README.md#Fraud Policy R6: Shared origin.",
+        "entity_ids": []
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-3039",
+      "CC-0078",
+      "CC-5015"
+    ],
+    "summary": "The case was triggered when the cardholder reported they did not make the flagged purchase of $131.30, which exceeded their 95th percentile amount and originated from a new device profile shared with confirmed fraud history. It was assumed from the customer that the transaction was unauthorized. The verdict is fraud, with a fraud probability of 0.972, and the actions follow Fraud Policy R2, R3a, and R6 because the customer denied the transaction, a case was opened, and the activity connects to a shared device profile linked to other card fraud.",
+    "written_to_graph": true,
+    "graph_case_id": "CASE-HHG-011"
+  },
+  "evidence_requests": [],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: customer denied the transaction; exposure $131.30 <= $2,500"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2/3a: open the case and write it to the graph"
+      },
+      {
+        "action": "FILE_REPORT",
+        "route": "L2",
+        "reason": "3a: fraud confirmed/strongly suspected and R6: shared origin with other cards"
+      },
+      {
+        "action": "MONITOR_CONNECTED_CARDS",
+        "route": "auto",
+        "reason": "R6: 3 card(s) share the device profile"
+      }
+    ],
+    "final": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: customer denied the transaction; exposure $131.30 <= $2,500"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2/3a: open the case and write it to the graph"
+      },
+      {
+        "action": "FILE_REPORT",
+        "route": "L2",
+        "reason": "3a: fraud confirmed/strongly suspected and R6: shared origin with other cards"
+      },
+      {
+        "action": "MONITOR_CONNECTED_CARDS",
+        "route": "auto",
+        "reason": "R6: 3 card(s) share the device profile"
+      }
+    ],
+    "what_changed": "nothing"
+  },
+  "sar": {
+    "file": true,
+    "reason": "3a: card_not_present_new_device fraud confirmed or strongly suspected and R6: activity connects to a shared device profile / another customer's fraud",
+    "narrative": "This report concerns customer C11923, card C11923-K2. On 2016-12-29, 1 transaction(s) (3583368) totalling $131.30 were identified as suspicious. The activity was conducted online, with amounts of $131.30. The transactions came from the device profile 'SM-G610F Build/NRD90M | ? | chrome 66.0 for android | ?', which was used by 3 other customers between 2016-12-28 and 2016-12-31, 0% of the time behind an anonymous proxy and 50% marked as a new device. Other cards on this device include C03938-K1, C05595-K1, C05678-K1, indicating a common actor across unrelated cardholders. Supporting detail: Flagged transaction came from a device marked New for this account (id_15). The cardholder reported the transaction as unauthorized. The activity is suspicious because it is inconsistent with the cardholder's established behaviour and matches the known typology 'card_not_present_new_device', as in prior confirmed cases CC-3039, CC-0078. Recommended actions: BLOCK_CARD, CREATE_CASE, FILE_REPORT, MONITOR_CONNECTED_CARDS. Total suspicious amount: $131.30.",
+    "subjects": [
+      "C11923",
+      "C11923-K2",
+      "C03938-K1",
+      "C05595-K1",
+      "C05678-K1",
+      "SM-G610F Build/NRD90M | ? | chrome 66.0 for android | ?",
+      "CC-3039",
+      "CC-0078"
+    ],
+    "total_amount_usd": 131.3,
+    "activity_dates": [
+      "2016-12-29",
+      "2016-12-29"
+    ]
+  },
+  "stop_reason": "Fraud probability 97% is at/above 0.85 with 3 independent inculpatory graph findings; further steps would not change the decision (policy 6).",
+  "tool_calls": 23,
+  "tokens": 2816,
+  "latency_s": 3.25
+}
